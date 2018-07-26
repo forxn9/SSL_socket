@@ -10,7 +10,7 @@
 
 #define MAXLINE    1024
 #define SERV_PORT  8848
-
+//it is a beautiful girl
 int main(int argc, char *argv[])
         {
             char sendbuf[MAXLINE],receivebuf[MAXLINE];
