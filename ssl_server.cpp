@@ -22,6 +22,7 @@ int main(int argc, char **argv)
     unsigned int myport, lisnum;
     char buf[MAXBUF + 1];
     SSL_CTX *ctx;
+    int opt = 1;
 
     if (argv[1])
         myport = atoi(argv[1]);
@@ -63,47 +64,56 @@ int main(int argc, char **argv)
     }
 
     /* 开启一个 socket 监听 */
-    if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket");
+    if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) 
+    {
+        perror("socket failure");
         exit(1);
-    } else
-        printf("socket created\n");
+    } 
 
     bzero(&my_addr, sizeof(my_addr));
     my_addr.sin_family = PF_INET;
     my_addr.sin_port = htons(myport);
+
     if (argv[3])
         my_addr.sin_addr.s_addr = inet_addr(argv[3]);
     else
         my_addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr))
-        == -1) {
-        perror("bind");
-        exit(1);
-    } else
-        printf("binded\n");
+    setsockopt( sockfd, SOL_SOCKET,SO_REUSEADDR, (const void *)&opt, sizeof(opt) );
 
-    if (listen(sockfd, lisnum) == -1) {
-        perror("listen");
+    if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) < 0) 
+    {
+        perror("bind failure");
         exit(1);
-    } else
-        printf("begin listen\n");
+    } 
 
-    while (1) {
+    if (listen(sockfd, lisnum) < 0) 
+    {
+        perror("listen failure");
+        exit(1);
+    }
+    
+    printf("Start SSL accept\n");
+
+    while (1) 
+    {
         SSL *ssl;
         pthread_t tid;
         len = sizeof(struct sockaddr);
+
+        printf("SSL Server start new  accept\n");
+
         /* 等待客户端连上来 */
-        if ((new_fd =
-             accept(sockfd, (struct sockaddr *) &their_addr,
-                    &len)) == -1) {
-            perror("accept");
+        if ((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &len)) == -1) 
+        {
+            perror("accept\n");
             exit(errno);
-        } else
-            printf("server: got connection from %s, port %d, socket %d\n",
-                   inet_ntoa(their_addr.sin_addr),
-                   ntohs(their_addr.sin_port), new_fd);
+        } 
+        else
+        {
+            printf("SSL server: got connection from %s, port %d, socket %d\n",
+                   inet_ntoa(their_addr.sin_addr), ntohs(their_addr.sin_port), new_fd);
+        }
 
         /* 基于 ctx 产生一个新的 SSL */
         ssl = SSL_new(ctx);
@@ -111,20 +121,18 @@ int main(int argc, char **argv)
         SSL_set_fd(ssl, new_fd);
         /* 建立 SSL 连接 */
         if (SSL_accept(ssl) == -1) {
-            perror("accept");
+            perror("accept\n");
             close(new_fd);
             break;
         }
        else
+       {
+        printf("Start create thread worker\n");
         pthread_create(&tid, NULL,thread_worker, (void *)ssl);
+      //  pthread_join(tid, NULL);
+       }
 
-
-       /* 关闭 SSL 连接 */
-        SSL_shutdown(ssl);
-        /* 释放 SSL */
-        SSL_free(ssl);
-        /* 关闭 socket */
-        close(new_fd);
+      printf("Thread worker create over\n");
     }
     /* 关闭监听的 socket */
     close(sockfd);
@@ -133,30 +141,40 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void *thread_worker(void *arg) {
-        char *buf;
-         socklen_t len;
+void *thread_worker(void *arg) 
+{
+        char buf[MAXBUF];
+        socklen_t len;
+
         SSL *ssl=(SSL *)arg;
-        bzero(buf, MAXBUF + 1);
+
+        bzero(buf, MAXBUF );
+
         len = SSL_read(ssl, buf, MAXBUF);
         if (len > 0)
-            printf("memsage '%s' received successful! total %d bytes data received\n",
-                   buf, len);
+        {
+            printf("memsage '%s' received successful! total %d bytes data received\n", buf, len);
+        }
         else
-            printf
-                ("receive memsage failure！error number %d，error reason:'%s'\n",
-                 errno, strerror(errno));
+        {
+            printf ("receive memsage failure！error number %d，error reason:'%s'\n", errno, strerror(errno));
+        }
+
 //发送消息
-        bzero(buf, MAXBUF + 1);
+        printf("run 5\n");
+        bzero(buf, MAXBUF );
         printf("please input data to client:\n");
-        fgets(buf,MAXBUF+1,stdin);
+        fgets(buf,MAXBUF, stdin);
         buf[strlen(buf)-1]='\0';
         len = SSL_write(ssl, buf, strlen(buf));
         if (len <= 0) {
             printf
                 ("memsage'%s'send failure！error number:%d，error reason:'%s'\n",
                  buf, errno, strerror(errno));
+         SSL_shutdown(ssl);
+         SSL_free(ssl);
         } else
-            printf("memsage '%s' send successful！total send %d bytes data！\n",
-                   buf, len);
+        {      printf("memsage '%s' send successful！total send %d bytes data！\n",
+                buf, len);
+        }
 }
