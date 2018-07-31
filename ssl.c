@@ -11,13 +11,14 @@
 #include <openssl/err.h>
 void ShowCerts (SSL* ssl);
 void *thread_worker(void *arg);
-int * p;
 
 int main(int argc, char **argv)
 {
     int                     socket_fd,  connect_fd = -1;
     struct sockaddr_in      serv_addr;             
      pthread_t tid;
+     int opt = 1;
+
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(socket_fd < 0 )
     {
@@ -30,6 +31,9 @@ int main(int argc, char **argv)
     serv_addr.sin_family = AF_INET;        
     serv_addr.sin_port = htons(8848);
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    setsockopt( socket_fd, SOL_SOCKET,SO_REUSEADDR, (const void *)&opt, sizeof(opt) );
+
 
     if( bind(socket_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0 )
     {
@@ -46,14 +50,12 @@ int main(int argc, char **argv)
         printf("waiting for client's connection......\n", socket_fd);
         connect_fd = accept(socket_fd, NULL, NULL);
         if(connect_fd < 0)
-        
         {
             printf("accept new socket failure: %s\n", strerror(errno));
             return -2;
         }
-        printf("accept ok, begin to connnect ssl_serevr\n");
-        p=&connect_fd;
-        pthread_create (&tid, NULL,thread_worker, (void *)p);
+        printf("accept newfd=%d, start create new worker\n", connect_fd);
+        pthread_create (&tid, NULL,thread_worker, (void *)connect_fd);
     } 
     close(socket_fd);
 }
@@ -62,11 +64,11 @@ int main(int argc, char **argv)
 void *thread_worker(void *arg)
 {
     char                    buf[1024]; 
-    int                     cli_fd=*p; 
+    int                     cli_fd=(int)arg; 
 
     int sockfd,len;
     struct sockaddr_in dest;
-//    char buffer[MAXBUF+1];
+
     SSL_CTX *ctx;//定义两个结构体数据https://www.cnblogs.com/274914765qq/p/4513236.html
     SSL *ssl;
     SSL_library_init();
@@ -82,8 +84,8 @@ void *thread_worker(void *arg)
         perror("socket");
         exit(errno);
     }
-    printf("run here\n");
-    printf("socket created\n");
+    printf("socket create ok\n");
+
     memset(&dest,0,sizeof(struct sockaddr_in));
     dest.sin_family=AF_INET;
     dest.sin_port=htons(7838);//ascii to integer  字符串转化为整形数
@@ -93,14 +95,15 @@ void *thread_worker(void *arg)
         printf("error ");
         exit(errno);
     }
-    printf("socket created");
+
     //连接服务器
+    printf("socket start connect to SSL server\n");
     if(connect(sockfd,(struct sockaddr*)&dest,sizeof(dest))!=0)
     {
         perror("Connect ");
         exit(errno);
     }
-    printf("server connected\n");
+    printf("socket server connected\n");
 
     //基于ctx产生一个新的ssl,建立SSL连接
     ssl=SSL_new(ctx);
@@ -111,6 +114,8 @@ void *thread_worker(void *arg)
         printf("connect with %s encryption\n",SSL_get_cipher(ssl));
         ShowCerts(ssl);
     }
+    printf("SSL connect to server ok\n");
+
     // bzero(buffer,MAXBUF+1);
     // fgets(buffer,MAXBUF+1,stdin);
 while(1){    
