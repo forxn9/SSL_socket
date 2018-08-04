@@ -12,7 +12,7 @@
 #define SERV_PORT  8848
 
 int main(int argc, char *argv[])
-        {
+   {
             char sendbuf[MAXLINE],receivebuf[MAXLINE];
             struct sockaddr_in servaddr;      //定义sockaddr类型结构体servaddr
             int client_sockfd;
@@ -47,13 +47,13 @@ int main(int argc, char *argv[])
               }
             //循环发送接收数据，send发送数据，recv接收数据 
 
-       while(1)
+      while(1)
            {
              printf("send msg to server: \n");
              fgets(sendbuf, 1024, stdin);//从标准输入读数据
              // 向服务器端发送数据
              sendbuf[sizeof(sendbuf)]='\0';
-             printf("             send data\n==============================\n%s\n==============================\n",sendbuf);
+             printf("\n=======to server========>>\n");
              if( send(client_sockfd, sendbuf, strlen(sendbuf), 0) < 0)
               {
                   printf("send msg error: %s(errno: %d)\n", strerror(errno), errno);
@@ -65,9 +65,10 @@ int main(int argc, char *argv[])
                    perror("recv error");
                    exit(1);
               }
-             printf("Response from server: %s\n",receivebuf);
+             printf("\nResponse from server: \n");
+             printf("%s\n<<======from server=======\n",receivebuf);
            }
        //关闭套接字 
-    close(client_sockfd);
-    return 0;
-        }
+      close(client_sockfd);
+      return 0;
+  }

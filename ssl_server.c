@@ -145,16 +145,15 @@ void *thread_worker(void *arg)
 {
         char buf[MAXBUF];
         socklen_t len;
-
         SSL *ssl=(SSL *)arg;
-while(1)
-{
+  while(1)
+  {
         bzero(buf, MAXBUF );
         len = SSL_read(ssl, buf, MAXBUF);
         buf[strlen(buf)-1]='\0';
         if (len > 0)
         {
-            printf("memsage  received successful! total %d bytes data received\n%s\n===================\n",  len,buf);
+            printf("memsage  received successful! total %d bytes data received\n%s\n=======from client=======\n",  len,buf);
         }
         else
         {
@@ -166,15 +165,16 @@ while(1)
         fgets(buf,MAXBUF, stdin);
         buf[strlen(buf)-1]='\0';
         len = SSL_write(ssl, buf, strlen(buf));
-        if (len <= 0) {
+        if (len <= 0) 
+        {
             printf
-                ("memsage'%s'send failure£¡error number:%d£¬error reason:'%s'\n",
-                 buf, errno, strerror(errno));
+                ("memsage'%s'send failure£¡error number:%d£¬error reason:'%s'\n", buf, errno, strerror(errno));
          SSL_shutdown(ssl);
          SSL_free(ssl);
-        } else
-          {      printf("memsage '%s' send successful£¡total send %d bytes data£¡\n",
-                buf, len);
+        }
+        else
+          {     
+              printf("memsage send successful! total send %d bytes data!\n %s\n=======to client========\n", len,buf);
           }
-}
+   }
 }

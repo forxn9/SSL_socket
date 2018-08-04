@@ -14,8 +14,8 @@ void *thread_worker(void *arg);
 
 int main(int argc, char **argv)
 {
-    int                     socket_fd,  connect_fd = -1;
-    struct sockaddr_in      serv_addr;             
+     int                     socket_fd,  connect_fd = -1;
+     struct sockaddr_in      serv_addr;             
      pthread_t tid;
      int opt = 1;
 
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     serv_addr.sin_port = htons(8848);
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    setsockopt( socket_fd, SOL_SOCKET,SO_REUSEADDR, (const void *)&opt, sizeof(opt) );
+    setsockopt( socket_fd, SOL_SOCKET,SO_REUSEADDR, (const void *)&opt, sizeof(opt) );//地址复用
 
 
     if( bind(socket_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0 )
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
             printf("accept new socket failure: %s\n", strerror(errno));
             return -2;
         }
-        printf("accept newfd=%d, start create new worker\n", connect_fd);
+        printf("accept newfd= %d, start create new worker\n", connect_fd);
         pthread_create (&tid, NULL,thread_worker, (void *)connect_fd);
     } 
     close(socket_fd);
@@ -75,12 +75,14 @@ void *thread_worker(void *arg)
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
     ctx=SSL_CTX_new(SSLv23_client_method());
-    if(ctx==NULL){
+    if(ctx==NULL)
+    {
         ERR_print_errors_fp(stdout);//  将错误打印到FILE中
         exit(1);
     }   
     //创建socket用于tcp通信
-    if((sockfd=socket(AF_INET,SOCK_STREAM,0))<0){
+    if((sockfd=socket(AF_INET,SOCK_STREAM,0))<0)
+    {
         perror("socket");
         exit(errno);
     }
@@ -110,37 +112,39 @@ void *thread_worker(void *arg)
     SSL_set_fd(ssl,sockfd);
     if(SSL_connect(ssl)==-1)
         ERR_print_errors_fp(stderr);
-    else{
+    else
+    {
         printf("connect with %s encryption\n",SSL_get_cipher(ssl));
         ShowCerts(ssl);
     }
     printf("SSL connect to server ok\n");
 
-    // bzero(buffer,MAXBUF+1);
-    // fgets(buffer,MAXBUF+1,stdin);
-while(1){    
+while(1)
+  {    
     memset(buf, 0, sizeof(buf));        
 
     read(cli_fd, buf, sizeof(buf));     
-    printf("read ok\n");
-     len=SSL_write(ssl,buf,strlen(buf));
-     if(len<0)
+    len=SSL_write(ssl,buf,strlen(buf));
+    if(len<0)
          printf("memsage send failure");
-     else
-         printf("SSL_write successful\n========================\n%s\n========================\n",buf);
+    else
+         printf("SSL_write successful\n==================>>\n%s\n=================>>\n",buf);
+  
     memset(buf,0,sizeof(buf));
     SSL_read(ssl,buf,sizeof(buf));
     
-     printf("SSL_read ok\n");
-     len=write(cli_fd,buf,len);
-    if(len>0) {
+    printf("SSL_read ok\n");
+    len=write(cli_fd,buf,len);
+    if(len>0) 
+      {
         
-         printf("write successful\n========================\n%s\n========================\n",buf);
+         printf("write successful\n<<=================\n%s\n<<=================\n",buf);
          memset(buf,0,sizeof(buf));
-        }
+      }
 
-}
+   }
 goto finish;
+
 finish:
      SSL_shutdown(ssl);
      SSL_free(ssl);
